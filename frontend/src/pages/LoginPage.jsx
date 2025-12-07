@@ -23,7 +23,7 @@ export default function LoginPage() {
       });
 
       if (data.success) {
-        setUser(data.user, res.data.token); // Assume res.data.token exists
+        setUser(data.user); 
         navigate("/projects");
       }
     } catch (error) {

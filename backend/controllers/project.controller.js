@@ -76,4 +76,58 @@ const createProject = async (req, res) => {
   }
 };
 
-export default { fetchProjects, getAllProjectsForRequestAccess, createProject };
+const deleteProject = async (req, res) => {
+  try {
+    const projectId = req.params.id;
+    const deletedProject = await Project.findByIdAndDelete(projectId);
+    if (!deletedProject) {
+      return res.status(404).json({ success: false, message: "Project not found" });
+    } 
+    res.json({ success: true, project: deletedProject, message: "Project deleted successfully" });
+  } catch (error) {
+    console.log("Error while deleting project:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Internal Server error",
+    })
+  }
+}
+
+const updateProject = async (req, res) => {
+  try {
+    const projectId = req.params.id;
+    const { name, location, phone, email, startDate, endDate } = req.body;
+    const updateData = {};
+    if (name) updateData.name = name;
+    if (location) updateData.location = location; 
+    if (phone) {
+      if (phone.length > 10) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Phone must be max 10 digits" });
+      }
+      updateData.phone = phone;
+    }
+    if (email) updateData.email = email;
+    if (startDate) updateData.startDate = startDate;
+    if (endDate) updateData.endDate = endDate;
+    const updatedProject = await Project.findByIdAndUpdate(
+      projectId,
+      updateData,
+      { new: true }
+    );
+
+    if (!updatedProject) {
+      return res.status(404).json({ success: false, message: "Project not found" });
+    } 
+    res.json({ success: true, project: updatedProject, message: "Project updated successfully" });
+  } catch (error) {
+    console.log("Error while updating project:", error);
+    return res.status(500).json({ 
+      success: false,
+      message: error.message || "Internal Server error",
+    })
+  }
+};
+
+export default { fetchProjects, getAllProjectsForRequestAccess, createProject, deleteProject, updateProject };

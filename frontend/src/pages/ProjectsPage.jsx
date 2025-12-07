@@ -45,7 +45,10 @@ export default function ProjectsPage() {
   const handleLogout = async () => {
     try {
       await api.post("/auth/logout");
-      handleApiResponse({ data: { success: true } }, { showSuccess: true, successMessage: "Logged out" });
+      handleApiResponse(
+        { data: { success: true, message: "Logged out" } },
+        { showSuccess: true, successMessage: "Logged out" }
+      );
       setUser(null);
       navigate("/login");
     } catch (error) {
@@ -69,6 +72,30 @@ export default function ProjectsPage() {
       fetchPendingRequests();
     } catch (error) {
       handleApiError(error);
+    }
+  };
+
+  const handleEditProject = (project) => {
+    // reuse CreateProjectPage; pass project in location.state
+    navigate("/createProject", { state: { project } });
+  };
+
+  const handleDeleteProject = async (id) => {
+    const confirm = window.confirm("Are you sure you want to delete this project?");
+    if (!confirm) return;
+
+    try {
+      const res = await api.delete(`/projects/${id}`);
+      const result = handleApiResponse(res, {
+        showSuccess: true,
+        successMessage: "Project deleted successfully",
+      });
+
+      if (result.success) {
+        setProjects((prev) => prev.filter((p) => p._id !== id));
+      }
+    } catch (error) {
+      handleApiError(error, "Failed to delete project");
     }
   };
 
@@ -119,46 +146,12 @@ export default function ProjectsPage() {
       </nav>
 
       <div className="p-8 space-y-10">
-        {/* Projects Section */}
-        <div className="bg-gray-800 rounded-2xl shadow-lg p-6 border border-gray-700">
-          <h2 className="text-2xl font-semibold mb-4 text-gray-100">Projects</h2>
-          <table className="w-full text-sm">
-            <thead className="bg-gray-700">
-              <tr>
-                <th className="text-left py-3 px-4">Name</th>
-                <th className="text-left py-3 px-4">Location</th>
-                <th className="text-left py-3 px-4">Phone</th>
-                <th className="text-left py-3 px-4">Email</th>
-                <th className="text-left py-3 px-4">Start Date</th>
-                <th className="text-left py-3 px-4">End Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              {projects.map((p) => (
-                <tr key={p._id} className="border-b border-gray-700 hover:bg-gray-700 transition">
-                  <td className="py-3 px-4">{p.name}</td>
-                  <td className="py-3 px-4">{p.location}</td>
-                  <td className="py-3 px-4">{p.phone}</td>
-                  <td className="py-3 px-4">{p.email}</td>
-                  <td className="py-3 px-4">{p.startDate.split('T')[0]}</td>
-                  <td className="py-3 px-4">{p.endDate.split('T')[0]}</td>
-                </tr>
-              ))}
-              {!projects.length && (
-                <tr>
-                  <td colSpan={user?.role === "Client" ? 4 : 3} className="py-6 text-center text-gray-400">
-                    No projects available
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
         {/* Pending Requests for Admin */}
         {user?.role === "Admin" && (
           <div className="bg-gray-800 rounded-2xl shadow-lg p-6 border border-gray-700">
-            <h2 className="text-2xl font-semibold mb-4 text-gray-100">Pending Access Requests</h2>
+            <h2 className="text-2xl font-semibold mb-4 text-gray-100">
+              Pending Access Requests
+            </h2>
             <table className="w-full text-sm">
               <thead className="bg-gray-700">
                 <tr>
@@ -170,7 +163,10 @@ export default function ProjectsPage() {
               </thead>
               <tbody>
                 {requests.map((r) => (
-                  <tr key={r._id} className="border-b border-gray-700 hover:bg-gray-700 transition">
+                  <tr
+                    key={r._id}
+                    className="border-b border-gray-700 hover:bg-gray-700 transition"
+                  >
                     <td className="py-3 px-4">{r.client.username}</td>
                     <td className="py-3 px-4">{r.project.name}</td>
                     <td className="py-3 px-4">{r.status}</td>
@@ -201,6 +197,85 @@ export default function ProjectsPage() {
             </table>
           </div>
         )}
+
+        {/* Projects Section */}
+        <div className="bg-gray-800 rounded-2xl shadow-lg p-6 border border-gray-700">
+          <h2 className="text-2xl font-semibold mb-4 text-gray-100">Projects</h2>
+          <table className="w-full text-sm">
+            <thead className="bg-gray-700">
+              <tr>
+                <th className="text-left py-3 px-4">Name</th>
+                <th className="text-left py-3 px-4">Location</th>
+                <th className="text-left py-3 px-4">Phone</th>
+                <th className="text-left py-3 px-4">Email</th>
+                <th className="text-left py-3 px-4">Start Date</th>
+                <th className="text-left py-3 px-4">End Date</th>
+                {user?.role === "Admin" && (
+                  <th className="text-left py-3 px-4">Actions</th>
+                )}
+              </tr>
+            </thead>
+            <tbody>
+              {projects.map((p) => (
+                <tr
+                  key={p._id}
+                  className="border-b border-gray-700 hover:bg-gray-700 transition"
+                >
+                  <td className="py-3 px-4">{p.name}</td>
+                  <td className="py-3 px-4">{p.location}</td>
+                  <td className="py-3 px-4">{p.phone}</td>
+                  <td className="py-3 px-4">{p.email}</td>
+                  <td className="py-3 px-4">
+                    {p.startDate ? p.startDate.split("T")[0] : "-"}
+                  </td>
+                  <td className="py-3 px-4">
+                    {p.endDate ? p.endDate.split("T")[0] : "-"}
+                  </td>
+
+                  {user?.role === "Client" && (
+                    <td className="py-3 px-4">
+                      <button
+                        onClick={() => handleRequestAccess(p._id)}
+                        className="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                      >
+                        Request Access
+                      </button>
+                    </td>
+                  )}
+
+                  {user?.role === "Admin" && (
+                    <td className="py-3 px-4 flex gap-2">
+                      <button
+                        onClick={() => handleEditProject(p)}
+                        className="px-3 py-1 bg-yellow-500 text-gray-900 rounded-lg hover:bg-yellow-400 text-xs font-semibold"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDeleteProject(p._id)}
+                        className="px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 text-xs font-semibold"
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  )}
+                </tr>
+              ))}
+
+              {!projects.length && (
+                <tr>
+                  <td
+                    colSpan={user?.role === "Admin" ? 7 : 6}
+                    className="py-6 text-center text-gray-400"
+                  >
+                    No projects available
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        
       </div>
     </div>
   );

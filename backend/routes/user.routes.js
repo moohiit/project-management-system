@@ -10,4 +10,7 @@ router.get("/", requireAdmin, userController.fetchAllUsers);
 // Admin can create users as well (similar to signup)
 router.post("/", requireAdmin, authController.createUser);
 
+// DELETE /api/users/:id  (Admin: delete a user)
+router.delete("/:id", requireAdmin, userController.deleteUser);
+
 export default router;

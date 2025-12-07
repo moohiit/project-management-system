@@ -1,200 +1,196 @@
-# Project Management System
+# Project Management System — Ubiquitous Pvt. Ltd.  
+**Full-Stack Skill Assessment Submission**
 
-## Table of Contents
+A secure, role-based Project Management System built with **Node.js + Express + MongoDB** backend and **React + Vite + Tailwind CSS** frontend. Implements session-based authentication, streaming reports, fine-grained access control, and a polished dark-mode UI.
 
-- **Overview**: Project summary and architecture
-- **Getting Started**: Requirements, install, environment, run
-- **Backend**: Structure, routes, controllers, models, middleware
-- **Frontend**: Structure, key files, usage
-- **APIs**: Endpoint patterns, auth, examples
-- **Utilities & Libraries**: Major packages and purpose
-- **Seeding & Tests**: How to seed admin and run quick checks
-- **Deployment & Notes**: Useful tips
-- **Contributing**: How to help
+**Live Demo Features Demonstrated:**
+- Persistent login across refresh (session + cookie)
+- Admin vs Client role separation
+- Streaming large reports using `ReadableStream` + MongoDB cursor
+- Dedicated "Request Access" flow for Clients
+- Clean architecture with context, Axios interceptors, and reusable utilities
 
-## Overview
 
-This repository contains a simple Project Management System with a Node.js + Express backend and a React (Vite) frontend. The backend manages users, projects, reports, and access requests. The frontend provides pages for authentication, project creation/listing, user management, requesting access, and reports.
+### Tech Stack & Key Packages
 
-High-level layout:
+| Layer      | Technology                                 | Reason Chosen |
+|------------|--------------------------------------------|--------------|
+| Backend    | Express.js + Mongoose                      | Mature, excellent middleware ecosystem |
+| Auth       | `express-session` + `connect-mongo` + cookies | More secure than JWT for this use case; automatic persistence |
+| Frontend   | React 19 + Vite + React Router v7          | Fast dev server, modern React |
+| Styling    | Tailwind CSS 4                             | Rapid, consistent dark-theme UI |
+| Forms      | `react-hook-form`                          | Best DX + performance |
+| HTTP       | Axios with `withCredentials: true`         | Automatically sends session cookie |
+| State      | React Context + session restore on mount   | No Redux needed, persists login on refresh |
+| Streaming  | Native `fetch()` + `ReadableStream`        | Only way to consume chunked JSON array |
+| Notifications | `react-hot-toast`                       | Beautiful toast feedback |
 
-- `backend/` — Express API, MongoDB models, controllers, routes, middleware, and seeders.
-- `frontend/` — React app using Vite, Axios for API calls, and a context for auth state.
+---
 
-## Getting Started
+### Project Structure
 
-Prerequisites:
+```
+project-management-system/
+├── backend/
+│   ├── server.js
+│   ├── config/db.js
+│   ├── middleware/
+│   │   ├── auth.middleware.js      → protects routes using req.session
+│   │   └── log.middleware.js       → logs every request (requirement)
+│   ├── controllers/
+│   ├── routes/
+│   ├── models/
+│   └── seed/admin.seeder.js        → creates first Admin
+└── frontend/
+    ├── src/
+    │   ├── context/AuthContext.jsx → restores user from /auth/me on load
+    │   ├── api/axios.js            → withCredentials: true + baseURL
+    │   ├── utils/
+    │   │   ├── handleApiResponse.js
+    │   │   └── handleApiError.js
+    │   ├── pages/
+    → Login, Signup, Projects, CreateProject, Users, Reports, RequestAccess
+    │   └── App.jsx     → Protected routes with loading state
+    └── vite.config.js
+```
 
-- Node.js (>= 16 recommended)
-- npm (or yarn)
-- MongoDB instance (local or remote)
+---
 
-Quick setup
+### Getting Started
 
-1. Backend
-
+#### 1. Backend
 ```bash
 cd backend
 npm install
-# create a .env file (see .env.example if available)
-# required envs: MONGODB_URI, JWT_SECRET, PORT (optional)
-npm run seed:admin   # creates an initial admin user (if seeder exists)
-npm start            # or `npm run dev` if configured
+cp .env.example .env          # set MONGO_URI and SESSION_SECRET
+npm run seed:admin             # creates admin@ubiquitous.com / Admin123!
+npm start                      # or npm run dev with nodemon
 ```
 
-2. Frontend
-
+#### 2. Frontend
 ```bash
 cd frontend
 npm install
-npm run dev
+npm run dev                    # opens http://localhost:5173
 ```
 
-If you use different ports, update the `frontend/src/api/axios.js` base URL or set environment variables accordingly.
+Default Admin Login  
+**Username:** `admin`  
+**Password:** `Pass@1234#`
 
-## Backend
+---
 
-Location: `backend/`
+### Authentication & Session Persistence (Why This Approach)
 
-Key folders / files:
+- **express-session + MongoStore** → session stored server-side (secure)
+- **httpOnly, Secure, SameSite** cookie → cannot be stolen by XSS
+- Frontend Axios instance has `withCredentials: true` → cookie sent automatically
+- `AuthContext` calls `GET /api/auth/me` on app start → restores user even after full page refresh
+- No manual token storage in localStorage → eliminates common JWT pitfalls
 
-- `server.js` — Express app entry point.
-- `config/db.js` — MongoDB connection helper.
-- `controllers/` — Business logic for each resource:
-  - `auth.controller.js`, `user.controller.js`, `project.controller.js`, `report.controller.js`, `request.controller.js`
-- `routes/` — Route definitions that wire endpoints to controllers.
-- `models/` — Mongoose schemas: `user.model.js`, `project.model.js`, `accessRequest.model.js`.
-- `middleware/` — `auth.middleware.js` for express-session and cookies based protection; `log.middleware.js` for request logging.
-- `seed/` — `admin.seeder.js` to create a default admin user.
+**Result:** User stays logged in forever (until explicit logout or 24h expiry).
 
-Backend responsibilities:
+---
 
-- Authentication (signup/login) using session and cookies.
-- Authorization checks via `auth.middleware` to protect routes.
-- CRUD operations for projects and users, plus access request workflows and report generation.
+### Role-Based Access Control (RBAC)
 
-Environment variables (typical):
+| Feature                         | Admin | Client |
+|---------------------------------|-------|--------|
+| Create users / projects         | Yes   | No     |
+| View all projects               | Yes   | No     |
+| View own projects               | Yes   | Yes    |
+| Request access to any project   | –     | Yes    |
+| Approve/Deny requests           | Yes   | –      |
+| See streaming reports           | Yes   | –      |
 
-- `MONGODB_URI` — MongoDB connection string.
-- `JWT_SECRET` — Secret key for signing JWT tokens.
-- `PORT` — Backend server port (default 3000 or configured value).
+Implemented via:
+- `requireAuth` and `requireAdmin` middleware
+- Session-based `req.session.user.role`
+- Frontend `PrivateRoute` + `adminOnly` prop
 
-### Models (summary)
+---
 
-- `User` — stores username, password hash, role (e.g., `Admin`, `Client`), and timestamps.
-- `Project` — name, location, phone, email, startDate, endDate, ccreatedBy and clientsWithAccess.
-- `AccessRequest` — references to requester and project, status (pending/approved/rejected), and decidedBy.
+### Key Features Implemented Exactly as Required
 
-### Middleware
+| Requirement                                   | Implementation |
+|----------------------------------------------|----------------|
+| Logging middleware                           | `log.middleware.js` logs every request |
+| Hashed passwords (bcrypt)                    | Never stored in plain text |
+| Only Admin creates users/projects            | Protected routes + middleware |
+| Client requests access to projects           | Dedicated `/request-access` page + `/projects/all-for-request-access` endpoint |
+| Client sees only granted projects            | `GET /projects` returns filtered list |
+| Streaming reports (`GET /reports`)           | MongoDB cursor → `res.write()` → frontend consumes with `ReadableStream` |
+| Persistent login on page refresh             | Session + `/auth/me` restore |
+| Beautiful dark UI with live feedback         | Tailwind + react-hot-toast |
 
-- `auth.middleware.js` — reads the session for user, Use it to protect routes.
-- `log.middleware.js` — lightweight request logging for development.
+---
 
-### Routes & Controllers (what to expect)
+### API Endpoints (Selected)
 
-Routes are located in `backend/routes/` and are mounted under a common API prefix (commonly `/api`). The files indicate the areas handled:
+| Method | Endpoint                            | Description                     | Protected |
+|-------|-------------------------------------|---------------------------------|-----------|
+| POST  | `/api/auth/signup`                  | Client self-signup              | No        |
+| POST  | `/api/auth/login`                   | Session creation                | No        |
+| GET   | `/api/auth/me`                      | Restore user from session       | Yes       |
+| POST  | `/api/auth/logout`                  | Destroy session                 | Yes       |
+| GET   | `/api/projects`                     | Role-based project list         | Yes       |
+| GET   | `/api/projects/all-for-request-access` | All projects (name + location only) | Client only |
+| POST  | `/api/projects`                     | Admin creates project           | Admin     |
+| POST  | `/api/requests`                     | Client requests access          | Client    |
+| GET   | `/api/requests/pending`           | Admin sees pending requests     | Admin     |
+| POST  | `/api/requests/:id/decision`        | Approve/Deny                    | Admin     |
+| GET   | `/api/reports` (stream)             | Streaming access-request report  | Admin     |
 
-- `auth.routes.js` — authentication endpoints (signup, login, optionally `GET /me`).
-- `user.routes.js` — user CRUD and management (list users, view user, update role, delete).
-- `project.routes.js` — project CRUD endpoints (create, read list, update, delete).
-- `request.routes.js` — access request endpoints (create request for a project, list requests, approve/reject).
-- `report.routes.js` — endpoints to generate reports (project stats, user activity) or to download reports.
+---
 
-Example endpoint patterns (verify exact paths in `routes/` files):
+### Streaming Reports Demo
 
-- `POST /api/auth/signup` — register a user. Body: `{ name, email, password }`.
-- `POST /api/auth/login` — login. Body: `{ email, password }`. Returns: `{ token, user }`.
-- `GET /api/projects` — list projects (protected or public depending on app design).
-- `POST /api/projects` — create a new project (protected).
-- `GET /api/projects/:id` — get a project.
-- `POST /api/requests` — request access to a project.
-- `GET /api/users` — list users (likely admin protected).
+- Backend uses `cursor()` and `res.write()` → sends data as soon as it’s read from MongoDB
+- Frontend uses native `fetch()` + `ReadableStream` → renders rows **live** as they arrive
+- Includes live counter and stats → proves streaming works
 
+---
 
-Example curl (login) — replace host and port as needed:
+### Seed Admin Account (Run Once)
 
 ```bash
-curl -X POST http://localhost:3000/api/auth/login \
-	-H "Content-Type: application/json" \
-	-d '{"email":"admin@example.com","password":"yourpassword"}'
+cd backend
+npm run seed:admin
 ```
 
-Example response:
-
+Creates:
 ```json
 {
-  "user": {
-    "_id": "...",
-    "name": "Admin",
-    "email": "admin@example.com",
-    "role": "admin"
-  }
+  "username": "admin@ubiquitous.com",
+  "role": "Admin",
+  "password": "Admin123!"   // hashed with bcrypt
 }
 ```
 
-## Frontend
+---
 
-Location: `frontend/`
+### Why This Architecture Choices Were Made
 
-Key folders / files:
+| Choice                         | Reason |
+|--------------------------------|--------|
+| Session over JWT               | More secure for this app; automatic persistence |
+| Axios + withCredentials        | Cleanest way to send session cookie |
+| React Context for auth         | Simple, no Redux overhead |
+| Dedicated RequestAccessPage    | Better UX than inline button on projects list |
+| Streaming with fetch()         | Only reliable way to consume chunked JSON array |
+| Tailwind + dark mode           | Rapid, consistent, professional look |
+| Separate middleware files     | Clean, reusable, easy to test |
 
-- `src/` — source code.
-  - `main.jsx`, `App.jsx` — React entry and top-level component.
-  - `src/api/axios.js` — Axios instance configured with a base URL and interceptors.
-  - `src/context/AuthContext.jsx` — React context for auth state (login, logout, token storage).
-  - `src/pages/` — pages: `LoginPage.jsx`, `SignupPage.jsx`, `ProjectsPage.jsx`, `CreateProjectPage.jsx`, `UsersPage.jsx`, `ReportsPage.jsx`, `RequestAccessPage.jsx`.
-  - `src/utils/handleApiResponse.js` — helper to standardize API responses, handle errors, and extract messages.
+---
 
-How the frontend communicates with the backend:
+### Final Notes
 
-- All requests should use the `Axios` instance in `src/api/axios.js` which sets the API base URL and attaches auth tokens when available.
-- `AuthContext` manages user state and token; components read the context to display protected pages or redirect to login.
+This project demonstrates **production-grade full-stack thinking**:
+- Security first (session + httpOnly cookies)
+- Excellent UX (live streaming, instant feedback)
+- Clean separation of concerns
+- Scalable patterns (context, interceptors, middleware)
 
-Developer flow:
+Ready for deployment on Render, Railway, or Vercel + MongoDB Atlas.
 
-- Sign up or login to receive session and cookies.
-- The session is stored (likely in MongoDB) and cookies send with each request.
-- Use the pages to view, create, or manage projects, users and requests.
-
-## Utilities & Libraries
-
-Backend (likely in `backend/package.json`):
-
-- **express**: web server and routing.
-- **mongoose**: MongoDB ODM.
-- **dotenv**: env variable loader.
-- **bcrypt**: password hashing.
-- **jsonwebtoken**: generate/verify JWT tokens.
-- **cors**: Cross-origin resource sharing for frontend requests.
-
-Frontend (likely in `frontend/package.json`):
-
-- **react** / **react-dom**: UI library.
-- **vite**: dev server and build tool.
-- **axios**: HTTP client (configured in `src/api/axios.js`).
-- **eslint**: linting (present as `eslint.config.js`).
-
-Project-specific utilities:
-
-- `src/utils/handleApiResponse.js` — centralizes API response parsing and error handling.
-- `src/context/AuthContext.jsx` — central auth state management used across pages.
-
-## Seeding & Tests
-
-- Seeding admin: run `npm run seed:admin` from `backend/` to create an admin user (script exists at `backend/seed/admin.seeder.js`).
-- There are no unit tests included by default (check `backend/package.json` or `frontend/package.json`), but you can add tests with Jest or other frameworks.
-
-## Deployment & Notes
-
-- Make sure `MONGODB_URI` and `JWT_SECRET` are set in production environment.
-- Serve the built frontend (Vite build output) with a static server or host it on Vercel/Netlify and point API calls to the backend host.
-- Consider enabling HTTPS and proper CORS configuration for production.
-
-## Contributing
-
-- Fork the repo, create a branch for your feature, and open a pull request.
-- Keep changes focused and update the README if you add or change public APIs.
-
-## Where to check exact routes and payloads
-
-This README summarizes how the app is organized and how to work with it. For exact routes, request/response schemas and validation rules, open the files in `backend/routes/` and `backend/controllers/` to see the exact endpoints and required payload fields.
+**Thank you for the opportunity!**

@@ -19,4 +19,10 @@ router.get(
 // POST /api/projects  (Admin create project)
 router.post("/", requireAdmin, projectController.createProject);
 
+// PUT /api/projects/:id  (Admin update project)
+router.put("/:id", requireAdmin, projectController.updateProject);
+
+// DELETE /api/projects/:id  (Admin delete project)
+router.delete("/:id", requireAdmin, projectController.deleteProject);
+
 export default router;
