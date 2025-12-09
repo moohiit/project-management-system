@@ -161,9 +161,9 @@ npm run seed:admin
 Creates:
 ```json
 {
-  "username": "admin@ubiquitous.com",
+  "username": "admin",
   "role": "Admin",
-  "password": "Admin123!"   // hashed with bcrypt
+  "password": "Password@1234#"   // hashed with bcrypt
 }
 ```
 
