@@ -99,7 +99,7 @@ export default function RequestAccessPage() {
     };
 
     loadData();
-  }, [user, navigate]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [user, navigate]); 
 
   if (loading) {
     return (
