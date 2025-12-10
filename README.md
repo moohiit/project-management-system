@@ -1,4 +1,4 @@
-# Project Management System — Ubiquitous Pvt. Ltd.  
+# Project Management System  
 **Full-Stack Skill Assessment Submission**
 
 A secure, role-based Project Management System built with **Node.js + Express + MongoDB** backend and **React + Vite + Tailwind CSS** frontend. Implements session-based authentication, streaming reports, fine-grained access control, and a polished dark-mode UI.
@@ -110,7 +110,7 @@ Implemented via:
 
 ---
 
-### Key Features Implemented Exactly as Required
+### Key Features 
 
 | Requirement                                   | Implementation |
 |----------------------------------------------|----------------|
@@ -182,15 +182,3 @@ Creates:
 | Separate middleware files     | Clean, reusable, easy to test |
 
 ---
-
-### Final Notes
-
-This project demonstrates **production-grade full-stack thinking**:
-- Security first (session + httpOnly cookies)
-- Excellent UX (live streaming, instant feedback)
-- Clean separation of concerns
-- Scalable patterns (context, interceptors, middleware)
-
-Ready for deployment on Render, Railway, or Vercel + MongoDB Atlas.
-
-**Thank you for the opportunity!**
