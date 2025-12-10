@@ -31,7 +31,6 @@ export default function ReportsPage() {
 
         if (!response.ok) throw new Error("Failed to load reports");
 
-        // ⬇️ Simple: parse whole JSON array
         const data = await response.json(); // data is an array
 
         setReports(data);

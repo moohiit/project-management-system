@@ -1,4 +1,3 @@
-// frontend/src/App.jsx
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "./context/AuthContext.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
@@ -7,7 +6,7 @@ import ProjectsPage from "./pages/ProjectsPage.jsx";
 import CreateProjectPage from "./pages/CreateProjectPage.jsx";
 import ReportsPage from "./pages/ReportsPage.jsx";
 import RequestAccessPage from "./pages/RequestAccessPage.jsx";
-import UsersPage from "./pages/UsersPage.jsx"; // New page
+import UsersPage from "./pages/UsersPage.jsx";
 
 const PrivateRoute = ({ children, adminOnly = false }) => {
   const { user, loading } = useAuth();

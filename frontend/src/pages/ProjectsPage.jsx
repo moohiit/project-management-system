@@ -44,11 +44,8 @@ export default function ProjectsPage() {
 
   const handleLogout = async () => {
     try {
-      await api.post("/auth/logout");
-      handleApiResponse(
-        { data: { success: true, message: "Logged out" } },
-        { showSuccess: true, successMessage: "Logged out" }
-      );
+      const res = await api.post("/auth/logout");
+      handleApiResponse( res, { showSuccess: true });
       setUser(null);
       navigate("/login");
     } catch (error) {
@@ -76,7 +73,7 @@ export default function ProjectsPage() {
   };
 
   const handleEditProject = (project) => {
-    // reuse CreateProjectPage; pass project in location.state
+    // pass project in location.state
     navigate("/createProject", { state: { project } });
   };
 
@@ -231,17 +228,6 @@ export default function ProjectsPage() {
                   <td className="py-3 px-4">
                     {p.endDate ? p.endDate.split("T")[0] : "-"}
                   </td>
-
-                  {user?.role === "Client" && (
-                    <td className="py-3 px-4">
-                      <button
-                        onClick={() => handleRequestAccess(p._id)}
-                        className="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                      >
-                        Request Access
-                      </button>
-                    </td>
-                  )}
 
                   {user?.role === "Admin" && (
                     <td className="py-3 px-4 flex gap-2">

@@ -69,7 +69,7 @@ export default function SignupPage() {
                 required: "Username is required",
                 minLength: { value: 3, message: "At least 3 characters" },
               })}
-              placeholder="johndoe"
+              placeholder="username123"
               className="w-full bg-gray-700 border border-gray-600 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-100 placeholder-gray-400 transition"
               disabled={isLoading}
             />

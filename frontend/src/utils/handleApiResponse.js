@@ -20,7 +20,7 @@ export const handleApiResponse = (res, options = {}) => {
     toast.error(message);
   }
 
-  return data; // so you can use data.data if needed
+  return data; 
 };
 
 /**
