@@ -1,184 +1,194 @@
-# Project Management System  
-**Full-Stack Skill Assessment Submission**
+# Project Management System
 
-A secure, role-based Project Management System built with **Node.js + Express + MongoDB** backend and **React + Vite + Tailwind CSS** frontend. Implements session-based authentication, streaming reports, fine-grained access control, and a polished dark-mode UI.
+A secure, role-based Project Management System built with a **Node.js + Express + MongoDB** backend and a **React + Vite + Tailwind CSS** frontend. It implements session-based authentication, fine-grained Admin/Client access control, a project access-request workflow, and streaming reports powered by MongoDB cursors — all wrapped in a polished dark-mode UI.
 
-**Live Demo Features Demonstrated:**
-- Persistent login across refresh (session + cookie)
-- Admin vs Client role separation
-- Streaming large reports using `ReadableStream` + MongoDB cursor
-- Dedicated "Request Access" flow for Clients
-- Clean architecture with context, Axios interceptors, and reusable utilities
+## Highlights
 
+- Persistent login across page refresh (server-side session + httpOnly cookie)
+- Strict Admin vs Client role separation, enforced in both API middleware and UI routing
+- Streaming large reports with a MongoDB cursor on the backend and `fetch()` + `ReadableStream` on the frontend — rows render live as they arrive
+- Dedicated "Request Access" flow for Clients, with Admin approve/deny decisions
+- Clean architecture: auth context, Axios interceptors, reusable response/error utilities, and request logging middleware
 
-### Tech Stack & Key Packages
+## Tech Stack
 
-| Layer      | Technology                                 | Reason Chosen |
+| Layer | Technology | Why |
 |------------|--------------------------------------------|--------------|
-| Backend    | Express.js + Mongoose                      | Mature, excellent middleware ecosystem |
-| Auth       | `express-session` + `connect-mongo` + cookies | More secure than JWT for this use case; automatic persistence |
-| Frontend   | React 19 + Vite + React Router v7          | Fast dev server, modern React |
-| Styling    | Tailwind CSS 4                             | Rapid, consistent dark-theme UI |
-| Forms      | `react-hook-form`                          | Best DX + performance |
-| HTTP       | Axios with `withCredentials: true`         | Automatically sends session cookie |
-| State      | React Context + session restore on mount   | No Redux needed, persists login on refresh |
-| Streaming  | Native `fetch()` + `ReadableStream`        | Only way to consume chunked JSON array |
-| Notifications | `react-hot-toast`                       | Beautiful toast feedback |
+| Backend | Express 5 + Mongoose 9 | Mature, excellent middleware ecosystem |
+| Auth | `express-session` + `connect-mongo` + httpOnly cookies | Server-side sessions; automatic persistence without JWT pitfalls |
+| Security | `helmet`, bcrypt password hashing, 10kb JSON body limit | Sensible hardening defaults |
+| Frontend | React 19 + Vite + React Router v7 | Fast dev server, modern React |
+| Styling | Tailwind CSS 4 | Rapid, consistent dark-theme UI |
+| Forms | `react-hook-form` | Great DX and performance |
+| HTTP | Axios with `withCredentials: true` | Automatically sends the session cookie |
+| State | React Context + session restore on mount | No Redux needed; login persists on refresh |
+| Streaming | Native `fetch()` + `ReadableStream` | Consumes the chunked JSON report as it streams |
+| Notifications | `react-hot-toast` | Clean toast feedback |
 
----
-
-### Project Structure
+## Project Structure
 
 ```
 project-management-system/
 ├── backend/
-│   ├── server.js
-│   ├── config/db.js
+│   ├── server.js                   # Express app: CORS, helmet, session, routes
+│   ├── .env.example
+│   ├── config/                     # db.js — MongoDB connection
 │   ├── middleware/
-│   │   ├── auth.middleware.js      → protects routes using req.session
-│   │   └── log.middleware.js       → logs every request (requirement)
-│   ├── controllers/
-│   ├── routes/
-│   ├── models/
-│   └── seed/admin.seeder.js        → creates first Admin
+│   │   ├── auth.middleware.js      # requireAuth / requireAdmin (session-based)
+│   │   └── log.middleware.js       # logs every request
+│   ├── controllers/                # auth, user, project, request, report
+│   ├── routes/                     # auth, users, projects, requests, reports
+│   ├── models/                     # User, Project, AccessRequest
+│   └── seed/                       # admin.seeder.js — creates the first Admin
 └── frontend/
-    ├── src/
-    │   ├── context/AuthContext.jsx → restores user from /auth/me on load
-    │   ├── api/axios.js            → withCredentials: true + baseURL
-    │   ├── utils/
-    │   │   ├── handleApiResponse.js
-    │   │   └── handleApiError.js
-    │   ├── pages/
-    → Login, Signup, Projects, CreateProject, Users, Reports, RequestAccess
-    │   └── App.jsx     → Protected routes with loading state
-    └── vite.config.js
+    ├── vite.config.js
+    ├── index.html
+    └── src/
+        ├── api/                    # axios.js — baseURL + withCredentials
+        ├── context/                # AuthContext.jsx — restores user from /auth/me
+        ├── utils/                  # handleApiResponse.js, handleApiError.js
+        ├── pages/                  # Login, Signup, Projects, CreateProject,
+        │                           # Users, Reports, RequestAccess
+        └── App.jsx                 # PrivateRoute with adminOnly guard
 ```
 
----
+## Getting Started
 
-### Getting Started
+### Prerequisites
 
-#### 1. Backend
+- Node.js 18+
+- MongoDB (local or Atlas)
+
+### 1. Backend
+
 ```bash
 cd backend
 npm install
-cp .env.example .env          # set MONGO_URI and SESSION_SECRET
-npm run seed:admin             # creates admin@ubiquitous.com / Admin123!
-npm start                      # or npm run dev with nodemon
+cp .env.example .env
 ```
 
-#### 2. Frontend
+Configure `backend/.env`:
+
+```env
+PORT=5000
+MONGO_URI=mongodb://localhost:27017/project_management_db
+SESSION_SECRET=your_session_secret_key
+NODE_ENV=development
+```
+
+Seed the first Admin account (run once), then start the server:
+
+```bash
+npm run seed:admin
+npm start                      # nodemon server.js
+```
+
+The seeder creates an Admin with username `admin`; its default password is set in `backend/seed/admin.seeder.js` — change it after first login (or edit the seeder before running it).
+
+### 2. Frontend
+
 ```bash
 cd frontend
 npm install
 npm run dev                    # opens http://localhost:5173
 ```
 
-Default Admin Login  
-**Username:** `admin`  
-**Password:** `Pass@1234#`
+The backend allows CORS from `http://localhost:5173` with credentials.
 
----
+## Authentication & Session Persistence
 
-### Authentication & Session Persistence (Why This Approach)
+- **express-session + MongoStore** — sessions stored server-side in MongoDB (24h TTL)
+- **httpOnly, Secure (in production), SameSite** cookie — not readable by client-side JS
+- Frontend Axios instance uses `withCredentials: true` — the cookie is sent automatically
+- `AuthContext` calls `GET /api/auth/me` on app start — restores the user after a full page refresh
+- No tokens in localStorage — avoids common JWT pitfalls
 
-- **express-session + MongoStore** → session stored server-side (secure)
-- **httpOnly, Secure, SameSite** cookie → cannot be stolen by XSS
-- Frontend Axios instance has `withCredentials: true` → cookie sent automatically
-- `AuthContext` calls `GET /api/auth/me` on app start → restores user even after full page refresh
-- No manual token storage in localStorage → eliminates common JWT pitfalls
+## Role-Based Access Control (RBAC)
 
-**Result:** User stays logged in forever (until explicit logout or 24h expiry).
-
----
-
-### Role-Based Access Control (RBAC)
-
-| Feature                         | Admin | Client |
+| Feature | Admin | Client |
 |---------------------------------|-------|--------|
-| Create users / projects         | Yes   | No     |
-| View all projects               | Yes   | No     |
-| View own projects               | Yes   | Yes    |
-| Request access to any project   | –     | Yes    |
-| Approve/Deny requests           | Yes   | –      |
-| See streaming reports           | Yes   | –      |
+| Create users / projects | Yes | No |
+| Update / delete projects | Yes | No |
+| View all projects | Yes | No |
+| View own (granted) projects | Yes | Yes |
+| Request access to any project | – | Yes |
+| View own access requests | – | Yes |
+| Approve / deny requests | Yes | – |
+| View users / delete users | Yes | – |
+| See streaming reports | Yes | – |
 
-Implemented via:
-- `requireAuth` and `requireAdmin` middleware
-- Session-based `req.session.user.role`
-- Frontend `PrivateRoute` + `adminOnly` prop
+Enforced via:
 
----
+- `requireAuth` and `requireAdmin` middleware reading `req.session.user`
+- Frontend `PrivateRoute` component with an `adminOnly` prop
 
-### Key Features 
+## API Endpoints
 
-| Requirement                                   | Implementation |
-|----------------------------------------------|----------------|
-| Logging middleware                           | `log.middleware.js` logs every request |
-| Hashed passwords (bcrypt)                    | Never stored in plain text |
-| Only Admin creates users/projects            | Protected routes + middleware |
-| Client requests access to projects           | Dedicated `/request-access` page + `/projects/all-for-request-access` endpoint |
-| Client sees only granted projects            | `GET /projects` returns filtered list |
-| Streaming reports (`GET /reports`)           | MongoDB cursor → `res.write()` → frontend consumes with `ReadableStream` |
-| Persistent login on page refresh             | Session + `/auth/me` restore |
-| Beautiful dark UI with live feedback         | Tailwind + react-hot-toast |
+### Auth — `/api/auth`
 
----
+| Method | Endpoint | Description | Access |
+|-------|-----------|-------------|--------|
+| POST | `/signup` | Client self-signup | Public |
+| POST | `/login` | Create session | Public |
+| GET | `/me` | Restore user from session | Authenticated |
+| POST | `/logout` | Destroy session | Authenticated |
 
-### API Endpoints (Selected)
+### Users — `/api/users`
 
-| Method | Endpoint                            | Description                     | Protected |
-|-------|-------------------------------------|---------------------------------|-----------|
-| POST  | `/api/auth/signup`                  | Client self-signup              | No        |
-| POST  | `/api/auth/login`                   | Session creation                | No        |
-| GET   | `/api/auth/me`                      | Restore user from session       | Yes       |
-| POST  | `/api/auth/logout`                  | Destroy session                 | Yes       |
-| GET   | `/api/projects`                     | Role-based project list         | Yes       |
-| GET   | `/api/projects/all-for-request-access` | All projects (name + location only) | Client only |
-| POST  | `/api/projects`                     | Admin creates project           | Admin     |
-| POST  | `/api/requests`                     | Client requests access          | Client    |
-| GET   | `/api/requests/pending`           | Admin sees pending requests     | Admin     |
-| POST  | `/api/requests/:id/decision`        | Approve/Deny                    | Admin     |
-| GET   | `/api/reports` (stream)             | Streaming access-request report  | Admin     |
+| Method | Endpoint | Description | Access |
+|-------|-----------|-------------|--------|
+| GET | `/` | List all users | Admin |
+| POST | `/` | Create a user | Admin |
+| DELETE | `/:id` | Delete a user | Admin |
 
----
+### Projects — `/api/projects`
 
-### Streaming Reports Demo
+| Method | Endpoint | Description | Access |
+|-------|-----------|-------------|--------|
+| GET | `/` | Admin: all projects; Client: granted projects only | Authenticated |
+| GET | `/all-for-request-access` | All projects (name + location only) for the request flow | Authenticated |
+| POST | `/` | Create project | Admin |
+| PUT | `/:id` | Update project | Admin |
+| DELETE | `/:id` | Delete project | Admin |
 
-- Backend uses `cursor()` and `res.write()` → sends data as soon as it’s read from MongoDB
-- Frontend uses native `fetch()` + `ReadableStream` → renders rows **live** as they arrive
-- Includes live counter and stats → proves streaming works
+### Access Requests — `/api/requests`
 
----
+| Method | Endpoint | Description | Access |
+|-------|-----------|-------------|--------|
+| POST | `/` | Request access to a project | Client |
+| GET | `/my-requests` | View own requests | Client |
+| GET | `/pending` | View pending requests | Admin |
+| POST | `/:id/decision` | Approve / deny a request | Admin |
 
-### Seed Admin Account (Run Once)
+### Reports — `/api/reports`
 
-```bash
-cd backend
-npm run seed:admin
-```
+| Method | Endpoint | Description | Access |
+|-------|-----------|-------------|--------|
+| GET | `/` | Streaming access-request report (chunked JSON) | Admin |
 
-Creates:
-```json
-{
-  "username": "admin",
-  "role": "Admin",
-  "password": "Password@1234#"   // hashed with bcrypt
-}
-```
+## Data Models
 
----
+- **User** — `username` (unique), `passwordHash` (bcrypt), `role` (`Admin` \| `Client`)
+- **Project** — `name`, `location`, `phone`, `email`, `startDate`, `endDate`, `createdBy`, `clientsWithAccess[]`
+- **AccessRequest** — `project`, `client`, `status` (`PENDING` \| `APPROVED` \| `DENIED`), `decidedBy`
 
-### Why This Architecture Choices Were Made
+## Streaming Reports
 
-| Choice                         | Reason |
+- Backend iterates a Mongoose `cursor()` and writes each document with `res.write()` — data is sent as soon as it is read from MongoDB
+- Frontend consumes the response with native `fetch()` + `ReadableStream` and renders rows live as they arrive, with a live counter and stats
+
+## Architecture Decisions
+
+| Choice | Reason |
 |--------------------------------|--------|
-| Session over JWT               | More secure for this app; automatic persistence |
-| Axios + withCredentials        | Cleanest way to send session cookie |
-| React Context for auth         | Simple, no Redux overhead |
-| Dedicated RequestAccessPage    | Better UX than inline button on projects list |
-| Streaming with fetch()         | Only reliable way to consume chunked JSON array |
-| Tailwind + dark mode           | Rapid, consistent, professional look |
-| Separate middleware files     | Clean, reusable, easy to test |
+| Sessions over JWT | Server-side revocation and automatic persistence |
+| Axios + `withCredentials` | Cleanest way to send the session cookie |
+| React Context for auth | Simple; no Redux overhead |
+| Dedicated Request Access page | Better UX than inline buttons on the projects list |
+| Streaming with `fetch()` | Reliable way to consume a chunked JSON array |
+| Tailwind + dark mode | Rapid, consistent, professional look |
+| Separate middleware files | Clean, reusable, easy to test |
 
 ---
+
+**Author:** Mohit Patel — [mohitpatel.org](https://mohitpatel.org) · GitHub [@moohiit](https://github.com/moohiit)
